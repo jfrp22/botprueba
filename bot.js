@@ -6,7 +6,7 @@
 // 1. Ve a https://web3forms.com
 // 2. Pon tu correo → te dan una ACCESS_KEY
 // 3. Pégala aquí:
-const WEB3FORMS_KEY = "TU-ACCESS-KEY-AQUI";
+const WEB3FORMS_KEY = "7db59e3d-9a92-44c7-88b8-bd4c5854be3b";
 
 const CORREO_DESTINO = "esp8266tg@gmail.com.com";
 
