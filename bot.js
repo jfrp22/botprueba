@@ -1,4 +1,4 @@
-// Opción A: Web3Forms (recomendado, gratis 250/mes)
+// Web3Forms (recomendado, gratis 250/mes)
 
 /* ============================================================
    CONFIGURACIÓN
@@ -6,7 +6,6 @@
 
 const WEB3FORMS_KEY = "7db59e3d-9a92-44c7-88b8-bd4c5854be3b";
 
-const CORREO_DESTINO = "esp8266tg@gmail.com.com";
 /* ============================================================
    ESTADOS DEL BOT
    ============================================================ */
@@ -14,8 +13,9 @@ const ESTADOS = {
   INICIO:       "inicio",
   NOMBRE:       "nombre",
   TELEFONO:     "telefono",
-  CONSULTA:     "consulta",
-  OPCIONES:     "opciones",
+  DEPARTAMENTO: "departamento",
+  PROBLEMA:     "problema",
+  DETALLE:      "detalle",
   SEGUIMIENTO:  "seguimiento",
   FIN:          "fin"
 };
@@ -25,70 +25,104 @@ let datos = {
   nombre: "",
   telefono: "",
   departamento: "",
+  problema: "",
   consulta: ""
 };
 
-/* Historial de toda la conversación (para el 2do reporte) */
 let historial = [];
 
-/* Bandera: ya se envió el primer reporte */
-let primerReporteEnviado = false;
-
 /* ============================================================
-   BASE DE CONOCIMIENTO: palabras clave → respuestas
+   PREGUNTAS PREDEFINIDAS POR DEPARTAMENTO
+   Cada entrada tiene:
+     - etiqueta: lo que ve el cliente (botón)
+     - claves:   palabras para detectar si el cliente lo escribe
+     - respuesta: lo que el bot contesta al elegirlo
    ============================================================ */
-const CONOCIMIENTO = {
-  // Soporte técnico
-  "internet":    "Podemos ayudarte con tu conexión. ¿El problema es lentitud, cortes o no conecta?",
-  "conexion":    "Cuéntame si es problema de velocidad, cortes intermitentes o no hay señal.",
-  "lento":       "Prueba reiniciar el router 30 segundos. Si sigue lento, un técnico puede revisarlo.",
-  "router":      "¿El router tiene todas las luces encendidas? Si no, verifica los cables.",
-  "wifi":        "Podemos revisar tu señal WiFi. ¿El problema es en toda la casa o en un solo equipo?",
-  "correo":      "¿Qué problema tienes con el correo? ¿No envía, no recibe o no abre?",
-  "contrasena":  "Podemos resetear tu contraseña. ¿De qué servicio es?",
-  "software":    "Cuéntame qué programa falla y qué mensaje de error aparece.",
-  "hardware":    "¿Qué equipo presenta la falla? ¿Computadora, impresora, otro?",
-  "impresora":   "Verifica que esté encendida y conectada. ¿Aparece algún error?",
-
-  // Administración
-  "factura":     "Podemos enviarte la factura. ¿Necesitas la del mes actual o una anterior?",
-  "pago":        "Aceptamos transferencia, tarjeta y PayPal. ¿Necesitas los datos bancarios?",
-  "contrato":    "¿Necesitas renovar, modificar o cancelar tu contrato?",
-  "plan":        "Podemos revisar tu plan actual. ¿Quieres cambiarlo o ver otras opciones?",
-  "precio":      "Los precios varían según el plan. ¿Qué servicio te interesa?",
-  "reembolso":   "Los reembolsos se procesan en 5-7 días hábiles. ¿Tienes el número de factura?",
-  "cancelar":    "Lamentamos que te vayas. ¿Podemos saber el motivo para mejorar?",
-  "datos":       "¿Necesitas actualizar tus datos personales o de facturación?",
-
-  // Genéricos
-  "ayuda":       "Cuéntame un poco más para poder ayudarte mejor.",
-  "problema":    "Entiendo, vamos a resolverlo. ¿Puedes dar más detalles?",
-  "gracias":     "¡De nada! 😊 ¿Hay algo más en lo que pueda ayudarte?",
-  "listo":       "¡Perfecto! ¿Necesitas algo más o cerramos la consulta?",
-  "eso es todo": "¡Gracias por contactarnos! Cerrando la consulta...",
-  "adios":       "¡Hasta luego! Que tengas buen día. 👋",
-  "chao":        "¡Chao! Vuelve pronto. 👋"
-};
-
-/* ============================================================
-   OPCIONES SUGERIDAS POR DEPARTAMENTO
-   ============================================================ */
-const OPCIONES_POR_DEPARTAMENTO = {
+const PROBLEMAS = {
   "Soporte Técnico": [
-    "Problema de internet",
-    "Falla de WiFi",
-    "Problema con correo",
-    "Resetear contraseña",
-    "Falla de hardware",
-    "Otro problema"
+    {
+      etiqueta: "Problema de internet",
+      claves: ["internet", "conexion", "conectar", "señal", "red"],
+      respuesta: "Entiendo, es un problema de conexión. ¿El internet no conecta del todo, va lento o se corta a ratos?"
+    },
+    {
+      etiqueta: "Falla de WiFi",
+      claves: ["wifi", "inalambric", "router", "señal wifi"],
+      respuesta: "Vamos a revisar tu WiFi. ¿El problema es en toda la casa o solo en algunos dispositivos?"
+    },
+    {
+      etiqueta: "Correo electrónico",
+      claves: ["correo", "email", "mail", "no envia", "no recibe"],
+      respuesta: "Cuéntame sobre tu correo. ¿No puedes enviar, no recibes mensajes, o no abre la sesión?"
+    },
+    {
+      etiqueta: "Resetear contraseña",
+      claves: ["contrasena", "clave", "password", "acceso", "no puedo entrar"],
+      respuesta: "Podemos resetear tu contraseña. ¿De qué servicio necesitas el cambio?"
+    },
+    {
+      etiqueta: "Falla de equipo/hardware",
+      claves: ["hardware", "computadora", "pc", "impresora", "equipo", "no enciende"],
+      respuesta: "¿Qué equipo presenta la falla? ¿Computadora, impresora, u otro dispositivo?"
+    },
+    {
+      etiqueta: "Problema con software",
+      claves: ["software", "programa", "aplicacion", "app", "sistema"],
+      respuesta: "¿Qué programa falla y qué mensaje de error aparece en pantalla?"
+    },
+    {
+      etiqueta: "Virus o seguridad",
+      claves: ["virus", "seguridad", "hackeo", "malware", "antivirus"],
+      respuesta: "Es importante atender esto rápido. ¿Notaste algún comportamiento extraño o mensaje sospechoso?"
+    },
+    {
+      etiqueta: "Otro problema técnico",
+      claves: ["otro", "otra", "diferente"],
+      respuesta: "Cuéntame con tus palabras qué está pasando, y te oriento."
+    }
   ],
+
   "Administración": [
-    "Solicitar factura",
-    "Consultar pago",
-    "Cambiar plan",
-    "Cancelar servicio",
-    "Actualizar datos",
-    "Otra consulta"
+    {
+      etiqueta: "Solicitar factura",
+      claves: ["factura", "recibo", "comprobante"],
+      respuesta: "Podemos enviarte la factura. ¿La necesitas del mes actual o de un período anterior?"
+    },
+    {
+      etiqueta: "Consultar pago",
+      claves: ["pago", "cobro", "transferencia", "tarjeta", "banco"],
+      respuesta: "Cuéntame sobre tu pago. ¿Quieres confirmar si se recibió, o tienes dudas con un cobro?"
+    },
+    {
+      etiqueta: "Cambiar plan",
+      claves: ["plan", "cambiar", "mejorar", "upgrade", "servicio"],
+      respuesta: "¿Qué plan tienes actualmente y a cuál te gustaría cambiarte?"
+    },
+    {
+      etiqueta: "Cancelar servicio",
+      claves: ["cancelar", "baja", "retirar", "no quiero"],
+      respuesta: "Lamentamos que te vayas. ¿Podemos saber el motivo para mejorar?"
+    },
+    {
+      etiqueta: "Actualizar datos",
+      claves: ["datos", "actualizar", "cambiar correo", "direccion", "telefono"],
+      respuesta: "¿Qué dato necesitas actualizar? (correo, dirección, teléfono, etc.)"
+    },
+    {
+      etiqueta: "Precios y planes",
+      claves: ["precio", "costo", "cuanto", "tarifa"],
+      respuesta: "¿Qué servicio te interesa? Así te doy los precios disponibles."
+    },
+    {
+      etiqueta: "Reembolso",
+      claves: ["reembolso", "devolucion", "devolver", "dinero"],
+      respuesta: "Los reembolsos se procesan en 5-7 días hábiles. ¿Tienes a mano el número de factura?"
+    },
+    {
+      etiqueta: "Otra consulta",
+      claves: ["otro", "otra", "diferente"],
+      respuesta: "Cuéntame con tus palabras tu consulta y te oriento."
+    }
   ]
 };
 
@@ -116,12 +150,7 @@ function agregarMensaje(texto, autor) {
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
 
-  // Guardar en historial
-  historial.push({
-    autor,
-    texto,
-    hora: new Date().toISOString()
-  });
+  historial.push({ autor, texto, hora: new Date().toISOString() });
 }
 
 function mostrarOpciones(opciones) {
@@ -146,17 +175,13 @@ function manejarEnvio(texto) {
   agregarMensaje(texto, "user");
   input.value = "";
 
-  setTimeout(() => {
-    procesarEstado(texto.trim());
-  }, 300);
+  setTimeout(() => procesarEstado(texto.trim()), 300);
 }
 
 function procesarEstado(texto) {
   switch (estado) {
 
-    /* ---------------------------------------------------------
-       INICIO
-    --------------------------------------------------------- */
+    /* ---------- INICIO ---------- */
     case ESTADOS.INICIO:
       estado = ESTADOS.NOMBRE;
       agregarMensaje(
@@ -167,9 +192,7 @@ function procesarEstado(texto) {
       limpiarOpciones();
       break;
 
-    /* ---------------------------------------------------------
-       NOMBRE
-    --------------------------------------------------------- */
+    /* ---------- NOMBRE ---------- */
     case ESTADOS.NOMBRE:
       if (texto.length < 2) {
         agregarMensaje("Por favor escribe un nombre válido.", "bot");
@@ -183,9 +206,7 @@ function procesarEstado(texto) {
       );
       break;
 
-    /* ---------------------------------------------------------
-       TELÉFONO
-    --------------------------------------------------------- */
+    /* ---------- TELÉFONO ---------- */
     case ESTADOS.TELEFONO:
       const digitos = texto.replace(/\D/g, "");
       if (digitos.length < 7) {
@@ -196,73 +217,113 @@ function procesarEstado(texto) {
         return;
       }
       datos.telefono = texto;
-      estado = ESTADOS.CONSULTA;
+      estado = ESTADOS.DEPARTAMENTO;
       agregarMensaje(
-        `Perfecto ✅\n\nAhora cuéntame, ${datos.nombre}: ¿en qué podemos ayudarte?`,
+        "Perfecto ✅\n\n¿A qué departamento deseas dirigirte?",
         "bot"
       );
+      mostrarOpciones(["Soporte Técnico", "Administración"]);
       break;
 
-    /* ---------------------------------------------------------
-       CONSULTA LIBRE
-       El cliente describe su problema con sus palabras
-    --------------------------------------------------------- */
-    case ESTADOS.CONSULTA:
-      datos.consulta = texto;
+    /* ---------- DEPARTAMENTO ---------- */
+    case ESTADOS.DEPARTAMENTO:
+      const dep = normalizar(texto);
+      let elegido = "";
 
-      // Detectar departamento automáticamente según palabras clave
-      const dep = detectarDepartamento(texto);
-      datos.departamento = dep;
-
-      // Responder con algo relacionado a lo que escribió
-      const respuestaInicial = buscarEnConocimiento(texto);
-
-      agregarMensaje(respuestaInicial, "bot");
-
-      // 📧 ENVIAR PRIMER REPORTE (datos del cliente + consulta inicial)
-      enviarReporte(1);
-
-      // Pasar a mostrar opciones
-      estado = ESTADOS.OPCIONES;
-      setTimeout(() => {
+      if (dep.includes("soporte") || dep.includes("tecnico") || dep.includes("tecnica")) {
+        elegido = "Soporte Técnico";
+      } else if (dep.includes("admin") || dep.includes("administracion")) {
+        elegido = "Administración";
+      } else {
         agregarMensaje(
-          "Para orientarte mejor, elige una opción o describe más tu caso:",
+          "Por favor elige una opción: Soporte Técnico o Administración.",
           "bot"
         );
-        mostrarOpciones(OPCIONES_POR_DEPARTAMENTO[dep] || ["Otra consulta"]);
-      }, 600);
+        mostrarOpciones(["Soporte Técnico", "Administración"]);
+        return;
+      }
+
+      datos.departamento = elegido;
+      estado = ESTADOS.PROBLEMA;
+
+      agregarMensaje(
+        `Perfecto, te paso con ${elegido} 🛠️\n\n` +
+        `¿Cuál de estos problemas describe mejor tu situación?`,
+        "bot"
+      );
+
+      // Mostrar preguntas predefinidas del departamento elegido
+      const lista = PROBLEMAS[elegido];
+      mostrarOpciones(lista.map(p => p.etiqueta));
+
+      // 📧 ENVIAR PRIMER REPORTE (ya tenemos nombre, teléfono y departamento)
+      enviarReporte(1);
       break;
 
-    /* ---------------------------------------------------------
-       OPCIONES: el cliente elige o escribe más
-    --------------------------------------------------------- */
-    case ESTADOS.OPCIONES:
-      // Guardar en historial como parte de la consulta
-      datos.consulta += ` | Seguimiento: ${texto}`;
+    /* ---------- PROBLEMA (elige de las predefinidas) ---------- */
+    case ESTADOS.PROBLEMA:
+      const problema = detectarProblema(texto, datos.departamento);
 
-      // Responder con algo relacionado
-      const resp = buscarEnConocimiento(texto);
-      agregarMensaje(resp, "bot");
+      if (!problema) {
+        agregarMensaje(
+          "No identifiqué ese problema. Elige una de las opciones o descríbelo de otra forma.",
+          "bot"
+        );
+        mostrarOpciones(PROBLEMAS[datos.departamento].map(p => p.etiqueta));
+        return;
+      }
 
-      estado = ESTADOS.SEGUIMIENTO;
+      datos.problema = problema.etiqueta;
+      datos.consulta = problema.etiqueta;
+      estado = ESTADOS.DETALLE;
 
+      agregarMensaje(problema.respuesta, "bot");
+
+      // Siguiente paso: el cliente puede detallar más
       setTimeout(() => {
         agregarMensaje(
-          "¿Hay algo más que quieras agregar? Si ya terminaste, escribe 'listo' o 'eso es todo'.",
+          "¿Puedes darme más detalles sobre el problema?",
           "bot"
         );
         limpiarOpciones();
-        mostrarOpciones(["Listo, eso es todo", "Quiero agregar más"]);
-      }, 500);
+        mostrarOpciones(["Ya te lo detallo", "Prefiero que me llamen"]);
+      }, 700);
       break;
 
-    /* ---------------------------------------------------------
-       SEGUIMIENTO: más detalles o cerrar
-    --------------------------------------------------------- */
+    /* ---------- DETALLE (cliente amplía) ---------- */
+    case ESTADOS.DETALLE:
+      const detalleNorm = normalizar(texto);
+
+      if (detalleNorm.includes("prefiero") || detalleNorm.includes("llamen") ||
+          detalleNorm.includes("llamada")) {
+        datos.consulta += " | Solicita llamada telefónica";
+        agregarMensaje(
+          "Entendido, agendaremos una llamada al número que nos diste. 📞",
+          "bot"
+        );
+      } else {
+        datos.consulta += ` | Detalle: ${texto}`;
+        agregarMensaje(
+          "Gracias por el detalle. Lo he registrado para el equipo de " +
+          datos.departamento + ".",
+          "bot"
+        );
+      }
+
+      estado = ESTADOS.SEGUIMIENTO;
+      setTimeout(() => {
+        agregarMensaje(
+          "¿Hay algo más que quieras agregar? Si ya terminaste, escribe 'listo'.",
+          "bot"
+        );
+        mostrarOpciones(["Listo, eso es todo", "Quiero agregar más"]);
+      }, 600);
+      break;
+
+    /* ---------- SEGUIMIENTO ---------- */
     case ESTADOS.SEGUIMIENTO:
       const norm = normalizar(texto);
 
-      // Si el cliente quiere cerrar
       if (norm.includes("listo") || norm.includes("eso es todo") ||
           norm.includes("termin") || norm.includes("gracias") ||
           norm.includes("nada mas") || norm.includes("adios")) {
@@ -273,18 +334,19 @@ function procesarEstado(texto) {
 
         agregarMensaje(
           "¡Perfecto! 📋 He registrado toda tu consulta.\n\n" +
-          "Te contactaremos pronto. Enviando reporte final...",
+          "Enviando reporte final...",
           "bot"
         );
 
-        // 📧 ENVIAR SEGUNDO REPORTE (conversación completa)
+        // 📧 SEGUNDO REPORTE (conversación completa)
         enviarReporte(2);
 
         setTimeout(() => {
           agregarMensaje(
             `✅ ¡Listo, ${datos.nombre}!\n\n` +
             `Tu caso fue asignado a ${datos.departamento}.\n` +
-            `Te llamaremos al ${datos.telefono}.\n\n` +
+            `Problema: ${datos.problema}\n` +
+            `Te contactaremos al ${datos.telefono}.\n\n` +
             `Gracias por contactarnos. 👋\n\n` +
             `Escribe "reiniciar" para una nueva consulta.`,
             "bot"
@@ -292,24 +354,16 @@ function procesarEstado(texto) {
         }, 800);
 
       } else {
-        // El cliente sigue agregando información
         datos.consulta += ` | Más detalles: ${texto}`;
-        const respExtra = buscarEnConocimiento(texto);
-        agregarMensaje(respExtra, "bot");
-
-        setTimeout(() => {
-          agregarMensaje(
-            "¿Algo más? Cuando termines escribe 'listo'.",
-            "bot"
-          );
-          mostrarOpciones(["Listo, eso es todo", "Quiero agregar más"]);
-        }, 400);
+        agregarMensaje(
+          "Anotado. ¿Algo más? Cuando termines escribe 'listo'.",
+          "bot"
+        );
+        mostrarOpciones(["Listo, eso es todo", "Quiero agregar más"]);
       }
       break;
 
-    /* ---------------------------------------------------------
-       FIN
-    --------------------------------------------------------- */
+    /* ---------- FIN ---------- */
     case ESTADOS.FIN:
       if (normalizar(texto).includes("reiniciar") ||
           normalizar(texto).includes("nueva") ||
@@ -326,70 +380,34 @@ function procesarEstado(texto) {
 }
 
 /* ============================================================
-   DETECTAR DEPARTAMENTO SEGÚN PALABRAS CLAVE
+   DETECTAR PROBLEMA DENTRO DE LAS OPCIONES DEL DEPARTAMENTO
    ============================================================ */
-function detectarDepartamento(texto) {
+function detectarProblema(texto, departamento) {
   const t = normalizar(texto);
+  const lista = PROBLEMAS[departamento] || [];
 
-  const palabrasSoporte = [
-    "internet", "conexion", "wifi", "router", "correo", "contrasena",
-    "software", "hardware", "impresora", "computadora", "pc", "equipo",
-    "lento", "falla", "error", "no funciona", "no conecta", "no abre",
-    "virus", "pantalla", "sistema", "red", "señal"
-  ];
+  // 1. Coincidencia por etiqueta exacta (cuando el cliente pulsa el botón)
+  for (const p of lista) {
+    if (normalizar(p.etiqueta) === t) return p;
+  }
 
-  const palabrasAdmin = [
-    "factura", "pago", "contrato", "plan", "precio", "reembolso",
-    "cancelar", "datos", "cobro", "recibo", "cuenta", "banco",
-    "transferencia", "tarjeta", "renovar", "suscripcion"
-  ];
+  // 2. Coincidencia por claves (cuando el cliente escribe)
+  for (const p of lista) {
+    for (const clave of p.claves) {
+      if (t.includes(normalizar(clave))) return p;
+    }
+  }
 
-  const esSoporte = palabrasSoporte.some(p => t.includes(p));
-  const esAdmin   = palabrasAdmin.some(p => t.includes(p));
-
-  if (esSoporte && !esAdmin) return "Soporte Técnico";
-  if (esAdmin && !esSoporte) return "Administración";
-  if (esSoporte && esAdmin)  return "Soporte Técnico"; // por defecto
-  return "Administración"; // si no detecta nada, va a admin
+  return null;
 }
 
 /* ============================================================
-   BUSCAR RESPUESTA EN LA BASE DE CONOCIMIENTO
-   ============================================================ */
-function buscarEnConocimiento(texto) {
-  const t = normalizar(texto);
-  if (!t) return "Cuéntame un poco más.";
-
-  // Coincidencia exacta
-  if (CONOCIMIENTO[t]) return CONOCIMIENTO[t];
-
-  // Coincidencia parcial (la clave está dentro del texto)
-  for (const clave in CONOCIMIENTO) {
-    if (t.includes(clave)) return CONOCIMIENTO[clave];
-  }
-
-  // Coincidencia por palabras sueltas
-  const palabras = t.split(/\s+/);
-  for (const clave in CONOCIMIENTO) {
-    if (palabras.includes(clave)) return CONOCIMIENTO[clave];
-  }
-
-  // Genéricos
-  if (t.includes("ayuda") || t.includes("problem")) {
-    return "Entiendo. ¿Puedes darme más detalles para orientarte mejor?";
-  }
-
-  return "Gracias por el detalle. ¿Puedes ampliar un poco más tu consulta?";
-}
-
-/* ============================================================
-   ENVÍO DE REPORTES POR CORREO
+   ENVÍO DE REPORTES
    ============================================================ */
 async function enviarReporte(numero) {
   try {
     const esPrimero = numero === 1;
 
-    // Armar la conversación en texto legible
     const conversacionTexto = historial
       .map(m => `[${m.autor.toUpperCase()}] ${m.texto}`)
       .join("\n\n");
@@ -397,18 +415,16 @@ async function enviarReporte(numero) {
     const cuerpo = {
       access_key: WEB3FORMS_KEY,
       subject: esPrimero
-        ? `📋 Reporte #1 - Nueva consulta de ${datos.nombre}`
-        : `📋 Reporte #2 (final) - Consulta de ${datos.nombre}`,
+        ? `📋 Reporte #1 - ${datos.nombre} → ${datos.departamento}`
+        : `📋 Reporte #2 (final) - ${datos.nombre} → ${datos.departamento}`,
       from_name: "Bot del sitio web",
 
-      // Datos del cliente
       Nombre: datos.nombre,
       Telefono: datos.telefono,
       Departamento: datos.departamento,
+      Problema: datos.problema,
       Consulta: datos.consulta,
       Fecha: new Date().toLocaleString("es-VE"),
-
-      // Conversación completa (útil sobre todo en el 2do)
       Conversacion: conversacionTexto
     };
 
@@ -422,17 +438,13 @@ async function enviarReporte(numero) {
     });
 
     const json = await respuesta.json();
-
     if (json.success) {
-      console.log(`✅ Reporte #${numero} enviado correctamente`);
-      if (esPrimero) primerReporteEnviado = true;
+      console.log(`✅ Reporte #${numero} enviado`);
     } else {
-      throw new Error(json.message || "Error al enviar reporte");
+      throw new Error(json.message || "Error");
     }
   } catch (err) {
-    console.error(`❌ Error al enviar reporte #${numero}:`, err);
-    // No mostramos error al cliente para no interrumpir la conversación
-    // Los datos igual quedan en el historial local
+    console.error(`❌ Error reporte #${numero}:`, err);
   }
 }
 
@@ -441,9 +453,8 @@ async function enviarReporte(numero) {
    ============================================================ */
 function reiniciar() {
   estado = ESTADOS.INICIO;
-  datos = { nombre: "", telefono: "", departamento: "", consulta: "" };
+  datos = { nombre: "", telefono: "", departamento: "", problema: "", consulta: "" };
   historial = [];
-  primerReporteEnviado = false;
   agregarMensaje("Perfecto, empecemos de nuevo 👇", "bot");
   procesarEstado("");
 }
