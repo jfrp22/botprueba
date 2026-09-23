@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Sitio - Con Bot</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ===== PÁGINA PRINCIPAL ===== -->
+  <header class="hero">
+    <h1>Bienvenido a Mi Sitio</h1>
+    <p>Una página estática con un bot de preguntas frecuentes</p>
+    <a href="#info" class="btn">Saber más</a>
+  </header>
+
+  <section id="info" class="contenido">
+    <h2>Sobre nosotros</h2>
+    <p>
+      Esta es una página de ejemplo creada para demostrar cómo integrar
+      un chatbot con respuestas predefinidas usando solo HTML, CSS y JavaScript.
+    </p>
+
+    <div class="cards">
+      <div class="card">
+        <h3>🚀 Rápido</h3>
+        <p>Todo funciona en el navegador, sin servidor.</p>
+      </div>
+      <div class="card">
+        <h3>🎨 Personalizable</h3>
+        <p>Edita las respuestas en un solo archivo.</p>
+      </div>
+      <div class="card">
+        <h3>🆓 Gratis</h3>
+        <p>Perfecto para GitHub Pages.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>© 2025 Mi Sitio — Hecho con GitHub Pages</p>
+  </footer>
+
+  <!-- ===== BOT (botón flotante + ventana) ===== -->
+  <button id="bot-toggle" aria-label="Abrir chat">💬</button>
+
+  <div id="bot-window" class="bot-hidden">
+    <div class="bot-header">
+      <span>🤖 Asistente</span>
+      <button id="bot-close" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div id="bot-messages" class="bot-messages">
+      <div class="msg bot">
+        ¡Hola! 👋 Soy tu asistente. Elige una pregunta o escríbela:
+      </div>
+    </div>
+
+    <div id="bot-suggestions" class="bot-suggestions"></div>
+
+    <form id="bot-form" class="bot-input">
+      <input id="bot-input" type="text" placeholder="Escribe tu pregunta..." autocomplete="off">
+      <button type="submit">➤</button>
+    </form>
+  </div>
+
+  <script src="bot.js"></script>
+</body>
+</html>
